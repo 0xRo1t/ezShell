@@ -21,3 +21,4 @@ go build -o ezShell.exe main.go httpclient.go scanner.go database.go nuclei.go r
 ## 还是因为跳转的问题
 http://123.232.15.58:8072/ 访问这个页面跳转到下面的， 这个页面没有指纹，但是跳转的有 导致没扫到
 http://123.232.15.58:8072/login/login.php
+
