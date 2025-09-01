@@ -3,7 +3,8 @@
 2. 缺点是： 数据量过高后前端页面会卡顿，需要优化sql查询
 
 ## 用法
-1. 配置文件 ez.conf 需要配置过滤的字段，以及 nuclei的路径 以及 nuclei模板的路径
+1. 配置好 ez.conf里面的 账号密码
+2. 配置文件 ez.conf 需要配置过滤的字段，以及 nuclei的路径 以及 nuclei模板的路径
 2. 配置文件设置好之后直接启动 ./ezShell 即可
 
 ## 工作流
@@ -22,3 +23,4 @@ go build -o ezShell main.go httpclient.go scanner.go database.go nuclei.go retag
 $env:GOOS="windows"
 $env:GOARCH="amd64"
 go build -o ezShell.exe main.go httpclient.go scanner.go database.go nuclei.go retags.go
+
