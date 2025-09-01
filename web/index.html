@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EZ-Shell</title>
+    <style>
+        body { font-family: 'Inter', Arial, sans-serif; margin: 0; padding: 0; display: flex; height: 100vh; background-color: #f4f7f9; }
+        .sidebar { width: 250px; background: #2c3e50; color: #ecf0f1; padding: 20px; box-sizing: border-box; border-top-right-radius: 16px; border-bottom-right-radius: 16px; box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2); }
+        .sidebar h2 { margin-top: 0; font-size: 1.5rem; text-align: center; }
+        .sidebar button { 
+            width: 100%; margin: 10px 0; padding: 12px; cursor: pointer; background: #34495e; color: #ecf0f1; border: none; border-radius: 8px; font-size: 1rem; transition: background 0.3s ease, transform 0.2s ease;
+        }
+        .sidebar button:hover { background: #3d566e; transform: translateY(-2px); }
+
+        /* 状态栏整体美化 */
+        .status {
+            margin-top: 20px;
+            padding: 20px; /* 增加内边距 */
+            border-radius: 12px; /* 柔和的圆角 */
+            background: #34495e; /* 稍亮的深色背景，与侧边栏协调 */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* 添加阴影以增加层次感 */
+            border: none; /* 移除原有边框 */
+        }
+
+        .status p {
+            margin: 8px 0; /* 调整段落间距 */
+            font-size: 0.95rem; /* 稍大一点的字体 */
+            color: #ecf0f1; /* 统一字体颜色 */
+        }
+
+        /* 为不同类型的值添加高亮样式 */
+        .status-value {
+            font-weight: bold;
+            color: #2ecc71; /* 绿色，表示正常或成功状态 */
+        }
+
+        .status-done {
+            font-weight: bold;
+            color: #3498db; /* 蓝色，突出完成数量 */
+        }
+
+        .status-total {
+            font-weight: bold;
+            color: #ecf0f1; /* 白色，与完成数量形成对比 */
+        }
+
+        .status-time {
+            font-weight: bold;
+            color: #f1c40f; /* 黄色，突出耗时 */
+        }
+        .content { flex: 1; padding: 24px; box-sizing: border-box; overflow: auto; background-color: #f4f7f9; }
+        .page { display: none; }
+        .page.active { display: block; }
+        h3 { color: #2c3e50; font-size: 1.75rem; margin-top: 0; margin-bottom: 20px; }
+        textarea { width: 100%; height: 300px; padding: 12px; box-sizing: border-box; font-family: monospace; border-radius: 8px; border: 1px solid #ddd; resize: vertical; margin-bottom: 10px; }
+        #startBtn, #exportBtn {
+            background-color: #3498db; color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; transition: background-color 0.3s ease; font-size: 1rem;
+        }
+        #startBtn:hover, #exportBtn:hover { background-color: #2980b9; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        th, td { border: 1px solid #ecf0f1; padding: 12px; text-align: left; font-size: 0.9rem; }
+        th { background-color: #e9ecef; color: #34495e; }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        tr:hover { background-color: #e8f0f3; }
+        .search-box { 
+            margin-bottom: 10px; 
+            display: flex; 
+            gap: 10px; 
+            align-items: center; 
+            max-width: 700px; /* 调整这里的数值，让搜索框变窄 */
+        }
+        .search-box select, 
+        .search-box input { padding: 10px; font-size: 0.9rem; border: 1px solid #ddd; border-radius: 8px; }
+        .search-box select { width: 150px; }
+        .search-box input { flex: 1; }
+
+        /* 找到并修改 search-box 内部的按钮样式 */
+        .search-box button {
+            padding: 15px 20px; /* 增加内边距让按钮更大 */
+            font-size: 0.9rem;
+            border: none;
+            border-radius: 8px;
+            background-color: #3498db; /* 统一使用蓝色，或自定义颜色 */
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .search-box button:hover {
+            background-color: #2980b9;
+        }
+        .modal {
+            display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6);
+        }
+        .modal-content {
+            background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 800px; border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .close-button {
+            color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;
+        }
+        .close-button:hover { color: black; }
+        pre {
+            background-color: #2b2b2b; color: #f8f8f2; padding: 15px; border-radius: 8px; overflow-x: auto;
+            white-space: pre-wrap; word-wrap: break-word; font-family: monospace;
+        }
+
+        /* 漏洞严重性徽章样式 */
+        .severity-badge {
+        padding: 4px 8px; /* 内边距 */
+        border-radius: 4px; /* 圆角 */
+        font-weight: bold; /* 字体加粗 */
+        color: white; /* 字体颜色为白色 */
+        text-transform: capitalize; /* 首字母大写 */
+        }
+        /* 定义不同严重性级别的颜色 */
+        .severity-info { background-color: #2ecc71; } /* 蓝色 #3498db*/
+        .severity-low { background-color: #3498db; } /* 绿色  #2ecc71*/
+        .severity-medium { background-color: #f1c40f; } /* 黄色 */
+        .severity-high { background-color: #e67e22; } /* 橙色 */
+        .severity-critical { background-color: #e74c3c; } /* 红色 */
+        .severity-unknown { background-color: #95a5a6; } /* 灰色 */
+        
+        /*查看请求和响应的 按钮美化*/
+        /* 通用按钮样式 - 更现代、美观 */
+        .btn {
+            padding: 8px 16px; /* 调整内边距让按钮更饱满 */
+            border: none;
+            border-radius: 6px; /* 柔和的圆角 */
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* 增加轻微阴影 */
+        }
+
+        /* “查看”按钮的特定样式 */
+        .btn-view {
+            background-color: #3498db; /* 蓝色背景 */
+            color: white; /* 白色字体 */
+            padding: 6px 12px; /* 稍小一点的尺寸 */
+        }
+
+        .btn-view:hover {
+            background-color: #2980b9; /* 悬停时颜色变深 */
+            transform: translateY(-1px); /* 悬停时轻微上浮 */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* 悬停时阴影加深 */
+        }
+
+        .finger-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed; /* 强制列宽分配 */
+        }
+
+        .finger-table th, .finger-table td {
+            border: 1px solid #ddd;
+            padding: 6px;
+            text-align: left;
+            vertical-align: top;
+            word-break: break-all;   /* 长字符串自动换行 */
+            white-space: pre-wrap;   /* 保留换行符/空格 */
+        }
+
+        /* 宽度分配 */
+        .finger-table th:nth-child(1), .finger-table td:nth-child(1) { width: 2%; }   /* # */
+        .finger-table th:nth-child(2), .finger-table td:nth-child(2) { width: 33%; }  /* URL */
+        .finger-table th:nth-child(3), .finger-table td:nth-child(3) { width: 10%; }  /* 路径 */
+        .finger-table th:nth-child(4), .finger-table td:nth-child(4) { width: 30%; }  /* 指纹 */
+        .finger-table th:nth-child(5), .finger-table td:nth-child(5) { width: 5%; }  /* 状态 */
+        .finger-table th:nth-child(6), .finger-table td:nth-child(6) { width: 15%; }  /* 标题 */
+        .finger-table th:nth-child(7), .finger-table td:nth-child(7) { width: 5%; }  /* 长度 */
+
+        .vuln-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed; /* 关键: 强制按设定宽度分配 */
+        }
+
+        .vuln-table th, .vuln-table td {
+            border: 1px solid #ddd;
+            padding: 6px;
+            text-align: left;
+            vertical-align: top;
+            word-break: break-all;   /* 遇到长字符串时强制换行 */
+            white-space: pre-wrap;   /* 保留换行符 & 空格 */
+        }
+
+        /* 宽度控制 */
+        .vuln-table th:nth-child(1), .vuln-table td:nth-child(1) { width: 2%; }   /* # */
+        .vuln-table th:nth-child(2), .vuln-table td:nth-child(2) { width: 5%; }  /* 请求包 */
+        .vuln-table th:nth-child(3), .vuln-table td:nth-child(3) { width: 5%; }  /* 响应包 */
+        .vuln-table th:nth-child(4), .vuln-table td:nth-child(4) { width: 28%; }  /* URL */
+        .vuln-table th:nth-child(5), .vuln-table td:nth-child(5) { width: 15%; }  /* 漏洞名 */
+        .vuln-table th:nth-child(6), .vuln-table td:nth-child(6) { width: 8%; }   /* 严重性 */
+        .vuln-table th:nth-child(7), .vuln-table td:nth-child(7) { width: 12%; }  /* 模板ID */
+        .vuln-table th:nth-child(8), .vuln-table td:nth-child(8) { width: 10%; }  /* Tags */
+        .vuln-table th:nth-child(9), .vuln-table td:nth-child(9) { width: 15%; }   /* 时间 */
+    </style>
+</head>
+<body>
+<div class="sidebar">
+    <h2>ez-shell</h2>
+    
+    <button onclick="showPage('input')">输入资产</button>
+    <button onclick="showPage('history')">历史记录</button>
+    <button onclick="showPage('vulnerabilities')">漏洞发现</button>
+    
+    <div class="status">
+        <p>状态: <span id="statusText" class="status-value">空闲</span></p>
+        <p>完成: <span id="done" class="status-done">0</span>/<span id="total" class="status-total">0</span></p>
+        <p>耗时: <span id="elapsed" class="status-time">0</span> s</p>
+    </div>
+</div>
+<div class="content">
+    <div id="page-input" class="page active">
+        <h3>输入资产</h3>
+        <textarea id="urls" placeholder="一行一个URL"></textarea>
+        <button id="startBtn">开始识别</button>
+    </div>
+    <div id="page-history" class="page">
+        <h3>历史记录</h3>
+        <div class="search-box">
+            <select id="historyFilterType">
+                
+                <option value="matches">指纹</option>
+                <option value="status">状态码</option>
+                <option value="path">路径</option>
+                <option value="url">URL</option>
+                <option value="exclude">排除</option>
+            </select>
+            <input id="historyFilter" type="text" placeholder="输入关键词过滤历史">
+            <button onclick="loadHistory()" class="refresh-btn">刷新</button>
+            <button id="exportBtn">导出 CSV</button>
+        </div>
+        <table class="finger-table">
+            <thead>
+            <tr>
+                <th id="sort-history-btn" style="cursor: pointer;"># <span id="sort-icon"></span></th>
+                <th class="url-cell">URL</th>
+                <th class="url-cell">路径</th>
+                <th>指纹</th>
+                <th>状态</th>
+                <th>标题</th>
+                <th>长度</th>
+            </tr>
+            </thead>
+            <tbody id="history_Body"></tbody>
+        </table>
+    </div>
+    <div id="page-vulnerabilities" class="page">
+        <h3>漏洞发现</h3>
+        <div class="search-box">
+            <select id="vulnFilterType">
+                <option value="severity">严重性</option>
+                <option value="name">漏洞名</option>
+                <option value="id">模板ID</option>
+                <option value="host">Host</option>
+            </select>
+            <input id="vulnFilter" type="text" placeholder="输入严重性过滤 (如 critical)">
+            <button onclick="loadVulnerabilities()">刷新</button>
+        </div>
+        <table class="vuln-table">
+            <thead>
+                <tr>
+                    <th id="sort-vuln-btn" style="cursor: pointer;"># <span id="sort-vuln-icon"></span></th>
+                    <th>请求包</th>
+                    <th>响应包</th>
+                    <th>URL</th>
+                    <th>漏洞名</th>
+                    <th>严重性</th>
+                    <th>模板ID</th>
+                    <th>Tags</th>
+                    <th>时间</th>
+                </tr>
+            </thead>
+            <tbody id="vulnerabilityBody"></tbody>
+        </table>
+    </div>
+    
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal()">&times;</span>
+            <h4 id="modalTitle"></h4>
+            <pre id="modalContent"></pre>
+        </div>
+    </div>
+</div>
+<script>
+    // 全局变量声明
+    let statusIntervalId;
+    let isHistoryAscending = false;
+    let isVulnAscending = false;
+    // 更新扫描状态（定时轮询）
+    function updateScanStatus() {
+        fetch("/api/scan-status")
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Server returned an error status: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('statusText').innerText = data.status;
+                document.getElementById('done').innerText = data.done;
+                document.getElementById('total').innerText = data.total;
+                document.getElementById('elapsed').innerText = data.elapsed.toFixed(1);
+                if (data.status === "扫描结束") {
+                    clearInterval(statusIntervalId);
+                    loadHistory();
+                    loadVulnerabilities();
+                }
+            })
+            .catch(error => {
+                console.error("Failed to fetch scan status:", error);
+                document.getElementById('statusText').innerText = "连接错误 函数";
+                clearInterval(statusIntervalId);
+            });
+    }
+    // --- 核心函数 ---
+
+    // 切换页面显示
+    function showPage(page) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-' + page).classList.add('active');
+        if (page === 'history') {
+            loadHistory();
+        } else if (page === 'vulnerabilities') {
+            loadVulnerabilities();
+        }
+    }
+
+    // 加载历史记录
+    function loadHistory() {
+        fetch("/web/history")
+            .then(res => res.text())
+            .then(html => {
+                document.getElementById("history_Body").innerHTML = html;
+                document.querySelectorAll("#history_Body tr").forEach(row => {
+                    if (row.cells[1]) row.cells[1].classList.add('url-cell');
+                    if (row.cells[2]) row.cells[2].classList.add('url-cell');
+                });
+                attachHistoryFilter();
+                sortHistoryTable();
+                document.getElementById('sort-icon').textContent = '▼';
+            })
+            .catch(err => {
+                console.error("加载历史失败:", err);
+            });
+    }
+
+    // 加载漏洞发现
+    function loadVulnerabilities() {
+        fetch("/web/vulnerabilities")
+            .then(res => res.json())
+            .then(results => {
+                const tbody = document.getElementById("vulnerabilityBody");
+                tbody.innerHTML = '';
+                results.forEach((vulnResult, index) => {
+                    const tr = document.createElement('tr');
+                    const escapedRequest = (vulnResult.request || '').replace(/`/g, '\\`').replace(/"/g, '&quot;');
+                    const escapedResponse = (vulnResult.response || '').replace(/`/g, '\\`').replace(/"/g, '&quot;');
+                    const tagsStr = (vulnResult.info.tags || []).join(', ');
+                    let formattedTime = vulnResult['vuln-time'] || "N/A";
+                    if (typeof formattedTime === 'string') {
+                        formattedTime = formattedTime.replace('T', ' ').replace('Z', '');
+                    }
+                    const severity = vulnResult.info.severity || "unknown";
+                    let severityClass = `severity-${severity.toLowerCase()}`;
+
+                    tr.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td><button class="btn btn-view" onclick="openModal('请求包', \`${escapedRequest}\`)">查看</button></td>
+                        <td><button class="btn btn-view" onclick="openModal('响应包', \`${escapedResponse}\`)">查看</button></td>
+                        <td>${vulnResult['matched-at'] || "N/A"}</td>
+                        <td>${vulnResult.info.name || "N/A"}</td>
+                        <td><span class="severity-badge ${severityClass}">${severity}</span></td>
+                        <td class="template-id">${vulnResult['template-id'] || "N/A"}</td>
+                        <td>${tagsStr || "N/A"}</td>
+                        <td>${formattedTime}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                sortVulnTable();
+                document.getElementById('sort-vuln-icon').textContent = '▼';
+            })
+            .catch(err => {
+                console.error("加载漏洞历史失败:", err);
+            });
+    }
+
+
+
+    // --- 辅助和模态框函数 ---
+
+    function openModal(title, content) {
+        document.getElementById('modalTitle').innerText = title;
+        document.getElementById('modalContent').innerText = content;
+        document.getElementById('modal').style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('modal').style.display = 'none';
+    }
+
+    function sortHistoryTable() {
+        const tbody = document.getElementById('history_Body');
+        if (!tbody) return;
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.sort((a, b) => {
+            const aIndex = parseInt(a.cells[0].textContent);
+            const bIndex = parseInt(b.cells[0].textContent);
+            return isHistoryAscending ? aIndex - bIndex : bIndex - aIndex;
+        });
+        tbody.innerHTML = '';
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
+    function sortVulnTable() {
+        const tbody = document.getElementById('vulnerabilityBody');
+        if (!tbody) return;
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.sort((a, b) => {
+            const aIndex = parseInt(a.cells[0].textContent);
+            const bIndex = parseInt(b.cells[0].textContent);
+            return isVulnAscending ? aIndex - bIndex : bIndex - aIndex;
+        });
+        tbody.innerHTML = '';
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
+
+
+    // 历史记录过滤
+    function attachHistoryFilter() {
+        const input = document.getElementById("historyFilter");
+        const select = document.getElementById("historyFilterType");
+        function filterRows() {
+            const keyword = input.value.trim().toLowerCase();
+            const filterType = select.value;
+            const rows = document.querySelectorAll("#history_Body tr");
+            rows.forEach(row => {
+                let cellContent = "";
+                switch (filterType) {
+                    case "status": cellContent = row.cells[4].textContent.toLowerCase(); break;
+                    case "matches": cellContent = row.cells[3].textContent.toLowerCase(); break;
+                    case "path": cellContent = row.cells[2].textContent.toLowerCase(); break;
+                    case "url": cellContent = row.cells[1].textContent.toLowerCase(); break;
+                    case "exclude":
+                        const combined = row.cells[3].textContent.toLowerCase() + " " + row.cells[4].textContent.toLowerCase();
+                        row.style.display = keyword === "" || !combined.includes(keyword) ? "" : "none";
+                        return;
+                }
+                row.style.display = keyword === "" || cellContent.includes(keyword) ? "" : "none";
+            });
+        }
+        input.addEventListener("input", filterRows);
+        select.addEventListener("change", filterRows);
+        function updatePlaceholder() {
+            switch (select.value) {
+                case "matches": input.placeholder = "输入指纹过滤 (如 spring-boot)"; break;
+                case "status": input.placeholder = "输入状态码过滤 (如 200)"; break;
+                case "path": input.placeholder = "输入路径过滤 (如 /nacos)"; break;
+                case "url": input.placeholder = "输入URL过滤 (如 47.100.25.218)"; break;
+                case "exclude": input.placeholder = "输入排除关键词"; break;
+            }
+        }
+        select.addEventListener("change", updatePlaceholder);
+        updatePlaceholder();
+    }
+
+
+    // --- DOM 加载完成后执行的代码 ---
+
+    document.addEventListener("DOMContentLoaded", () => {
+        // 事件绑定
+        document.getElementById('startBtn').addEventListener('click', () => {
+            const urls = document.getElementById('urls').value.trim().split("\n").filter(x => x.trim());
+            if (!urls.length) {
+                openModal("输入错误", "请输入至少一个 URL。");
+                return;
+            }
+            if (statusIntervalId) {
+                clearInterval(statusIntervalId);
+            }
+            document.getElementById('statusText').innerText = "扫描中...";
+            document.getElementById('done').innerText = "0";
+            document.getElementById('total').innerText = urls.length;
+            document.getElementById('elapsed').innerText = "0";
+            showPage('history');
+            fetch("/scan?urls=" + encodeURIComponent(urls.join("\n")))
+                .then(response => {
+                    if (response.ok) {
+                        statusIntervalId = setInterval(updateScanStatus, 1000);
+                    } else {
+                        openModal("扫描失败", "后端任务启动失败。");
+                        document.getElementById('statusText').innerText = "启动失败";
+                    }
+                })
+                .catch(error => {
+                    openModal("网络错误", "无法连接到后端服务。");
+                    document.getElementById('statusText').innerText = "连接错误 getElementById";
+                    console.error("Error starting scan:", error);
+                });
+        });
+
+        document.getElementById('vulnFilter').addEventListener('input', function() {
+            const filterType = document.getElementById('vulnFilterType').value;
+            const filter = this.value.trim().toLowerCase();
+            const rows = document.querySelectorAll('#vulnerabilityBody tr');
+            rows.forEach(row => {
+                let cellContent = '';
+                switch (filterType) {
+                    case 'severity': cellContent = row.cells[5].textContent.toLowerCase(); break;
+                    case 'name': cellContent = row.cells[4].textContent.toLowerCase(); break;
+                    case 'id': cellContent = row.cells[6].textContent.toLowerCase(); break;
+                    case 'host': cellContent = row.cells[3].textContent.toLowerCase(); break;
+                }
+                row.style.display = filter === '' || cellContent.includes(filter) ? '' : 'none';
+            });
+        });
+
+        document.getElementById('vulnFilterType').addEventListener('change', function() {
+            const input = document.getElementById('vulnFilter');
+            const select = this;
+            switch (select.value) {
+                case 'severity': input.placeholder = '输入严重性过滤 (如 critical)'; break;
+                case 'name': input.placeholder = '输入漏洞名过滤 (如 misconfiguration)'; break;
+                case 'id': input.placeholder = '输入模板ID过滤 (如 http/cve)'; break;
+                case 'host': input.placeholder = '输入Host过滤 (如 example.com)'; break;
+            }
+        });
+
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const rows = document.querySelectorAll('#history_Body tr');
+            let txtContent = "序号\tURL\t路径\t指纹\t状态\t标题\t长度\n";
+            rows.forEach(row => {
+                if (row.style.display !== 'none') {
+                    const cols = Array.from(row.cells).map(td => td.textContent.trim());
+                    txtContent += cols.join("\t") + "\n";
+                }
+            });
+            const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "filtered_results.txt";
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        const sortHistoryBtn = document.getElementById('sort-history-btn');
+        if (sortHistoryBtn) {
+            sortHistoryBtn.addEventListener('click', () => {
+                isHistoryAscending = !isHistoryAscending;
+                sortHistoryTable();
+                const sortIcon = document.getElementById('sort-icon');
+                sortIcon.textContent = isHistoryAscending ? '▲' : '▼';
+            });
+        }
+
+        const sortVulnBtn = document.getElementById('sort-vuln-btn');
+        if (sortVulnBtn) {
+            sortVulnBtn.addEventListener('click', () => {
+                isVulnAscending = !isVulnAscending;
+                sortVulnTable();
+                const sortIcon = document.getElementById('sort-vuln-icon');
+                sortIcon.textContent = isVulnAscending ? '▲' : '▼';
+            });
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                const modal = document.getElementById('modal');
+                if (modal.style.display === 'block') {
+                    closeModal();
+                }
+            }
+        });
+    });
+</script>
+</body>
+</html>
