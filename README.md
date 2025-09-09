@@ -10,17 +10,3 @@
 ## 工作流
 从fofa 这种平台拉出来url，直接放进 输入框去扫描 url + path.txt 里面的路径，然后去扫描指纹
 扫描指纹完成后，利用 nuclei去漏扫
-
-## 编写poc
-yaml poc的时候，需要注意 tags字段 和 finger.json里面的 cms字段需要一致
-
-
-## powershell下 编译命令
-$env:GOOS="linux"
-$env:GOARCH="amd64"
-go build -o ezShell main.go httpclient.go scanner.go database.go nuclei.go retags.go
-
-$env:GOOS="windows"
-$env:GOARCH="amd64"
-go build -o ezShell.exe main.go httpclient.go scanner.go database.go nuclei.go retags.go
-
